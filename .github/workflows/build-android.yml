@@ -1,0 +1,53 @@
+name: Build ChatGPT Builder Android 15 APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 15 SDK
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Extract Builder source
+        run: |
+          mkdir -p extracted
+          unzip -q chatgpt-builder-android15.zip -d extracted
+
+      - name: Find Android project
+        run: |
+          ANDROID_DIR=$(dirname "$(find extracted -name settings.gradle -print -quit)")
+          echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
+          echo "Android project: $ANDROID_DIR"
+
+      - name: Build APK
+        run: |
+          gradle -p "$ANDROID_DIR" assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: chatgpt-builder-android15-apk
+          path: |
+            extracted/**/build/outputs/apk/**/*.apk
+          if-no-files-found: error
